@@ -193,6 +193,24 @@ header.top .pm-salir,.pm-salir{width:100%;background:transparent;border:1px soli
 .folio{font-family:var(--mono);font-size:11.5px;padding:1px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent);font-weight:500}
 .spdest{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 .tag-new{font-size:11px;color:var(--ok);font-weight:600} .tag-upd{font-size:11px;color:var(--muted)}
+.imp-sum{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)} .imp-sum b{color:var(--fg);font-family:var(--mono)}
+.imp-bulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted);padding:8px 10px;border-radius:8px;background:var(--warn-soft)}
+.dupnota{font-size:12px;color:var(--warn);margin-top:2px}
+tr.esdup td{background:color-mix(in srgb, var(--warn-soft) 55%, transparent)}
+.vtabs{display:flex;gap:6px;border-bottom:2px solid var(--line)}
+.vtabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:0;padding:8px 14px;font-weight:600;color:var(--muted);cursor:pointer}
+.vtabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.segitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:var(--card,transparent)}
+.segitem .sh{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;font-size:12.5px}
+.segitem .st{font-weight:600;margin:4px 0 2px;cursor:pointer}
+.segchip{display:inline-flex;gap:6px;align-items:center;margin-bottom:10px;padding:4px 10px;border-radius:999px;background:var(--line);font-size:12.5px}
+.verseg{font-size:12.5px;padding:4px 10px}
+.hist{margin-top:8px;font-size:12.5px}
+.hist summary{cursor:pointer;color:var(--accent);font-weight:500;width:max-content}
+.hist ol{list-style:none;margin:6px 0 0;padding:0 0 0 12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.hist ul{margin:2px 0 0;padding-left:16px;color:var(--muted)}
+.hist .ht{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.hist .antes{text-decoration:line-through;opacity:.75} .hist .despues{color:var(--fg)}
 button.stat{font:inherit;cursor:pointer;border:1.5px solid transparent;color:var(--muted);padding:6px 10px;font-weight:400}
 button.stat:hover{border-color:var(--line)}
 button.stat.on{border-color:currentColor;background:var(--surface);box-shadow:0 1px 0 var(--line)}
@@ -307,6 +325,8 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     </aside>
 
     <main style="display:flex;flex-direction:column;gap:20px;min-width:0">
+      <nav class="vtabs" id="vtabs"><button type="button" class="on" data-vista="bit">Bitácora del día</button><button type="button" data-vista="hist">Historial</button><button type="button" data-vista="seg">Seguimiento de cambios</button></nav>
+      <div id="v-bit" style="display:flex;flex-direction:column;gap:20px;min-width:0">
       <section class="panel">
         <div class="daybar">
           <p class="dayname" id="dayname">Hoy</p>
@@ -325,6 +345,8 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
         </div>
       </section>
 
+      </div>
+      <div id="v-hist" hidden style="display:flex;flex-direction:column;gap:20px;min-width:0">
       <section class="panel">
         <h2>Historial</h2>
         <div class="hist-tools">
@@ -338,6 +360,18 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
         </table></div>
         <div class="daybar" style="margin-top:8px"><p class="hint" id="hist-count" style="margin:0"></p><button type="button" id="btn-pdf-hist">Descargar historial en PDF</button></div>
         <p class="hint" style="margin:4px 0 0">El PDF del historial incluye lo que coincide con la búsqueda y los filtros de arriba.</p>
+      </section>
+      </div>
+      <section class="panel" id="v-seg" hidden>
+        <h2>Seguimiento de cambios</h2>
+        <p class="hint">Aquí queda registrado qué se cambió en cada revisión, cuándo y desde dónde. Solo se agrega, nunca se borra.</p>
+        <div class="hist-tools">
+          <input type="search" id="sq" placeholder="Buscar por revisión, folio o campo">
+          <select id="so"><option value="">Cualquier origen</option><option value="pagina">Creadas en la bitácora</option><option value="edicion">Ediciones</option><option value="spd">SPD</option><option value="claude">Claude</option></select>
+        </div>
+        <div id="segchip"></div>
+        <div id="seglist"></div>
+        <div class="daybar" style="margin-top:8px"><p class="hint" id="seg-count" style="margin:0"></p><button type="button" id="btn-pdf-seg">Descargar seguimiento en PDF</button></div>
       </section>
     </main>
   </div>
@@ -407,6 +441,40 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     $("#f-titulo").focus();
   }
 
+
+  // ---- Seguimiento de cambios ----
+  const CAMPOS={fecha:"Fecha",hora:"Hora",sistema:"Sistema",modulo:"Módulo",titulo:"Qué revisaste",flujo:"Flujo",resultado:"Resultado",hallazgos:"Hallazgos",imagenes:"Evidencias",stickers:"Stickers",estadoSpd:"Estado SPD",pr:"PR",folio:"Folio"};
+  const ORIGEN={pagina:"Bitácora",edicion:"Edición",spd:"SPD",claude:"Claude"};
+  const corta=t=>{ t=String(t); return t.length>400?t.slice(0,400)+"…":t; };
+  const fmtV=(k,v)=>{ if(k==="resultado") return RES[v]||v||"—"; if(k==="flujo") return (v||[]).join(" → ")||"—"; if(k==="imagenes") return (v||[]).length+" imagen(es)"; if(k==="stickers") return (v||[]).length+" sticker(s)"; return (v===undefined||v===null||v==="")?"—":corta(v); };
+  function diffRev(a,b){ const out=[]; const vac=v=>v==="null"||v==='""'||v==="[]";
+    for(const k of Object.keys(CAMPOS)){ const x=JSON.stringify(a[k]??null), y=JSON.stringify(b[k]??null); if(x!==y && !(vac(x)&&vac(y))) out.push({campo:k, antes:fmtV(k,a[k]), despues:fmtV(k,b[k])}); }
+    return out; }
+  function conHist(prev,next,origen,accion){ const c=diffRev(prev,next); const h=(prev.historial||[]).slice(-199); if(c.length) h.push({t:new Date().toISOString(), origen, accion:accion||"", cambios:c}); next.historial=h; return c; }
+  const fmtFH=t=>{ try{ return new Date(t).toLocaleString("es-MX",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(_){ return t; } };
+  let segId="";
+  function segRows(){
+    const q=($("#sq")?$("#sq").value:"").trim().toLowerCase(), o=$("#so")?$("#so").value:"";
+    const out=[];
+    all.forEach(e=>{ if(segId&&e.id!==segId) return; (e.historial||[]).forEach(h=>{
+      if(o&&h.origen!==o) return;
+      if(q){ const hay=[e.folio,e.titulo,e.sistema,e.modulo,h.accion,(h.cambios||[]).map(c=>(CAMPOS[c.campo]||c.campo)+" "+c.antes+" "+c.despues).join(" ")].join(" ").toLowerCase(); if(!hay.includes(q)) return; }
+      out.push({e,h}); }); });
+    return out.sort((a,b)=>a.h.t<b.h.t?1:-1);
+  }
+  function renderSeg(){
+    if(!$("#seglist")) return;
+    const rows=segRows(), shown=rows.slice(0,300);
+    const cur=segId?all.find(e=>e.id===segId):null;
+    $("#segchip").innerHTML = segId ? `<span class="segchip">Solo: ${esc(cur?((cur.folio?cur.folio+" · ":"")+cur.titulo):segId)} <button type="button" class="ghost" id="segclear" style="padding:0 6px">✕ Ver todas</button></span>` : "";
+    $("#seglist").innerHTML = shown.length ? shown.map(({e,h})=>`<div class="segitem">
+      <div class="sh"><span class="ht mono">${esc(fmtFH(h.t))}</span> · <b>${esc(ORIGEN[h.origen]||h.origen)}</b>${h.accion?" · "+esc(h.accion):""}</div>
+      <div class="st" data-go="${esc(e.fecha)}">${e.folio?`<span class="folio">${esc(e.folio)}</span> `:""}${esc(e.titulo)} <span class="hint">· ${esc(e.sistema)}${e.modulo?" › "+esc(e.modulo):""}</span></div>
+      ${(h.cambios||[]).length?`<ul class="hist" style="margin:2px 0 0;padding-left:16px;color:var(--muted)">${h.cambios.map(c=>`<li><b>${esc(CAMPOS[c.campo]||c.campo)}:</b> <span class="antes" style="text-decoration:line-through;opacity:.75">${esc(c.antes)}</span> → <span class="despues" style="color:var(--fg)">${esc(c.despues)}</span></li>`).join("")}</ul>`:""}
+    </div>`).join("") : `<p class="empty">${loaded?(all.some(e=>(e.historial||[]).length)?"Nada coincide con el filtro.":"Aún no hay cambios registrados. Aparecerán cuando edites o importes revisiones."):"Cargando…"}</p>`;
+    $("#seg-count").textContent = rows.length>300 ? `Mostrando 300 de ${rows.length}. Afina la búsqueda.` : (rows.length?`${rows.length} ${rows.length===1?"cambio":"cambios"}`:"");
+  }
+  function setVista(v){ $("#v-bit").hidden=v!=="bit"; $("#v-hist").hidden=v!=="hist"; $("#v-hist").style.display=v==="hist"?"flex":"none"; $("#v-seg").hidden=v!=="seg"; document.querySelectorAll("#vtabs button").forEach(b=>b.classList.toggle("on",b.dataset.vista===v)); if(v==="seg") renderSeg(); }
   function sortKey(e){ return (e.fecha||"")+" "+(e.hora||"00:00"); }
 
   function render(){
@@ -447,6 +515,7 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
             ${(e.flujo&&e.flujo.length)?`<ol class="flow">${e.flujo.map(s=>`<li><span>${esc(s)}</span></li>`).join("")}</ol>`:""}
             ${e.hallazgos?`<div class="findings ${esc(e.resultado)}">${esc(e.hallazgos)}</div>`:""}
             ${(e.imagenes&&e.imagenes.length)?`<div class="ethumbs">${e.imagenes.map((im,k)=>`<button type="button" class="thumb" data-lb="${esc(e.id)}" data-k="${k}" aria-label="Ver evidencia ${k+1}"><img src="${esc(blobUrl(im.id))}" alt="${esc(im.nombre||"Evidencia")}" loading="lazy"></button>`).join("")}</div>`:""}
+            ${(e.historial||[]).length?`<button type="button" class="ghost verseg" data-seg="${esc(e.id)}">Ver cambios (${e.historial.length})</button>`:""}
             ${canWrite?`<div class="eactions">
               <button type="button" class="ghost" data-edit="${esc(e.id)}">Editar</button>
               ${confirmId===e.id
@@ -458,6 +527,7 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
         </li>`).join("");
     }
     renderHistory();
+    renderSeg();
     renderLists();
   }
 
@@ -657,37 +727,67 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     if(/por revisar|soltad|pendiente/.test(e)) return "pausa";
     return "incidencias"; };
   let impRows=[];
+  // Duplicados
+  const normT=t=>String(t||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\p{L}\p{N}]+/gu," ").trim().toLowerCase();
+  const flujoKey=a=>normT((a||[]).join(" "));
+  function findDup(r){
+    const byId=all.find(e=>e.id===r.id); if(byId) return {e:byId, por:"mismo folio"};
+    if(r.folio){ const byF=all.find(e=>e.folio===r.folio); if(byF) return {e:byF, por:"mismo folio"}; }
+    const t=normT(r.titulo), fk=flujoKey(r.proceso);
+    const byT=all.find(e=>normT(e.titulo)===t && (!fk || !(e.flujo&&e.flujo.length) || flujoKey(e.flujo)===fk));
+    return byT ? {e:byT, por:"mismo nombre"} : null;
+  }
+  const ACC_DUP={omitir:"Omitir (no subir)",actualizar:"Solo actualizar estado SPD",reemplazar:"Reemplazar con lo del SPD",copia:"Crear una copia"};
+  const ACC_NEW={crear:"Importar",omitir:"No importar"};
   function buildImport(){
     const rows=parseCSV($("#imp-text").value);
     const prev=$("#imp-prev");
+    const visto=new Map();
     impRows=rows.filter(r=>r["Folio"]).map(r=>{
       const proceso=(r["Proceso"]||"").split(/\s*(?:→|->|›)\s*/).filter(Boolean);
       const id="spd-"+r["Folio"].replace(/[^A-Za-z0-9_\-.~:@+]/g,"");
-      return {id, folio:r["Folio"], titulo:r["Título"]||r["Titulo"]||r["Folio"], estadoSpd:r["Estado"]||"", modulo:r["Módulo"]||r["Modulo"]||"",
+      const row={id, folio:r["Folio"], titulo:r["Título"]||r["Titulo"]||r["Folio"], estadoSpd:r["Estado"]||"", modulo:r["Módulo"]||r["Modulo"]||"",
         proceso, revision:r["Revisión"]||"", creo:r["Creó"]||"", pr:r["Agente: PR"]||"", creada:spdDate(r["Creada"]),
-        resultado:RES_FROM_SPD(r["Estado"]), incluir:true, existe:all.some(e=>e.id===id)};
+        resultado:RES_FROM_SPD(r["Estado"])};
+      row.dup=findDup(row);
+      const k1="f:"+row.folio, k2="t:"+normT(row.titulo)+"|"+flujoKey(row.proceso);
+      if(!row.dup && (visto.has(k1)||visto.has(k2))) row.repCsv=true;
+      visto.set(k1,1); visto.set(k2,1);
+      row.accion = row.dup||row.repCsv ? "omitir" : "crear";
+      return row;
     });
     if(!$("#imp-text").value.trim()){ prev.innerHTML=""; $("#imp-go").disabled=true; return; }
     if(!impRows.length){ prev.innerHTML=`<p class="notice">No encontré incidencias. Revisa que el CSV tenga la columna <b>Folio</b> en la primera fila.</p>`; $("#imp-go").disabled=true; return; }
-    prev.innerHTML=`<div class="table-wrap"><table>
-      <thead><tr><th><input type="checkbox" id="imp-all" checked aria-label="Seleccionar todas"></th><th>Folio</th><th>Incidencia</th><th>Módulo</th><th>Estado SPD</th><th>Resultado en bitácora</th><th></th></tr></thead>
-      <tbody>${impRows.map((r,i)=>`<tr>
-        <td><input type="checkbox" data-imp-inc="${i}" checked aria-label="Importar ${esc(r.folio)}"></td>
+    renderImport();
+  }
+  function renderImport(){
+    const prev=$("#imp-prev");
+    const nDup=impRows.filter(r=>r.dup).length, nRep=impRows.filter(r=>r.repCsv).length, nNew=impRows.length-nDup-nRep;
+    prev.innerHTML=`<div class="imp-sum"><span><b>${nNew}</b> nuevas</span><span><b>${nDup}</b> ya están en tu bitácora</span>${nRep?`<span><b>${nRep}</b> repetidas dentro del archivo</span>`:""}</div>
+      ${nDup?`<div class="imp-bulk"><span>Para las que ya existen:</span><button type="button" class="ghost" data-bulk="omitir">Omitir todas</button><button type="button" class="ghost" data-bulk="actualizar">Actualizar estado de todas</button><button type="button" class="ghost" data-bulk="reemplazar">Reemplazar todas</button></div>`:""}
+      <div class="table-wrap"><table>
+      <thead><tr><th>Folio</th><th>Incidencia</th><th>Estado SPD</th><th>Qué hacer</th><th>Resultado en bitácora</th></tr></thead>
+      <tbody>${impRows.map((r,i)=>{
+        const opts=r.dup?ACC_DUP:ACC_NEW;
+        const nota=r.dup?`<div class="dupnota">Ya existe (${r.dup.por}) · ${esc(r.dup.e.fecha||"")} · “${esc(r.dup.e.titulo||"")}”${r.dup.e.historial&&r.dup.e.historial.length?` · ${r.dup.e.historial.length} cambios guardados`:""}</div>`
+                 : r.repCsv?`<div class="dupnota">Aparece repetida en el archivo</div>`:"";
+        const usaRes = r.accion==="crear"||r.accion==="copia"||r.accion==="reemplazar";
+        return `<tr class="${r.dup||r.repCsv?"esdup":""}">
         <td><span class="folio">${esc(r.folio)}</span></td>
-        <td>${esc(r.titulo)}</td><td>${esc(r.modulo)}</td><td><span class="spdest">${esc(r.estadoSpd)}</span></td>
-        <td>${r.existe?'<span class="hint" style="margin:0">Se conserva el tuyo</span>':`<select data-imp-res="${i}">${Object.entries(RES).map(([k,v])=>`<option value="${k}" ${k===r.resultado?"selected":""}>${v}</option>`).join("")}</select>`}</td>
-        <td>${r.existe?'<span class="tag-upd">Ya existe · se actualiza</span>':'<span class="tag-new">Nueva</span>'}</td></tr>`).join("")}</tbody></table></div>`;
+        <td>${esc(r.titulo)}${nota}</td><td><span class="spdest">${esc(r.estadoSpd)}</span></td>
+        <td><select data-imp-acc="${i}" aria-label="Qué hacer con ${esc(r.folio)}">${Object.entries(opts).map(([k,v])=>`<option value="${k}" ${k===r.accion?"selected":""}>${v}</option>`).join("")}</select></td>
+        <td>${usaRes?`<select data-imp-res="${i}">${Object.entries(RES).map(([k,v])=>`<option value="${k}" ${k===r.resultado?"selected":""}>${v}</option>`).join("")}</select>`:'<span class="hint" style="margin:0">Se conserva el tuyo</span>'}</td></tr>`;}).join("")}</tbody></table></div>
+      <p class="hint" style="margin:0">Tus hallazgos, evidencias y stickers nunca se borran. Cada cambio que haga la importación queda en el seguimiento de la revisión.</p>`;
     updImpBtn();
   }
-  function updImpBtn(){ const n=impRows.filter(r=>r.incluir).length; const b=$("#imp-go"); b.disabled=!n||!col||!canWrite; b.textContent=n?`Importar ${n} ${n===1?"incidencia":"incidencias"}`:"Importar"; }
+  function updImpBtn(){ const n=impRows.filter(r=>r.accion!=="omitir").length; const b=$("#imp-go"); b.disabled=!n||!col||!canWrite; b.textContent=n?`Aplicar a ${n} ${n===1?"incidencia":"incidencias"}`:"Nada que importar"; }
   $("#imp-prev").addEventListener("change",e=>{
     const t=e.target;
-    if(t.id==="imp-all"){ impRows.forEach(r=>r.incluir=t.checked); document.querySelectorAll("[data-imp-inc]").forEach(c=>c.checked=t.checked); }
-    else if(t.dataset.impInc) impRows[+t.dataset.impInc].incluir=t.checked;
-    else if(t.dataset.impRes) impRows[+t.dataset.impRes].resultado=t.value;
+    if(t.dataset.impAcc!==undefined){ impRows[+t.dataset.impAcc].accion=t.value; renderImport(); return; }
+    if(t.dataset.impRes!==undefined) impRows[+t.dataset.impRes].resultado=t.value;
     updImpBtn();
   });
-  $("#imp-open-hook")?.remove();
+  $("#imp-prev").addEventListener("click",e=>{ const b=e.target.closest("[data-bulk]"); if(!b) return; impRows.forEach(r=>{ if(r.dup) r.accion=b.dataset.bulk; }); renderImport(); });
   $("#btn-imp-open").addEventListener("click",()=>{ $("#imp").hidden=false; $("#imp").scrollIntoView({behavior:"smooth",block:"start"}); });
   $("#imp-close").addEventListener("click",()=>{ $("#imp").hidden=true; });
   $("#imp-file-btn").addEventListener("click",()=>$("#imp-file").click());
@@ -695,23 +795,33 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     $("#imp-text").value=await f.text(); $("#imp-fname").textContent=f.name; buildImport(); });
   let impT; $("#imp-text").addEventListener("input",()=>{ clearTimeout(impT); impT=setTimeout(buildImport,300); });
   $("#imp-go").addEventListener("click",async()=>{
-    const sel=impRows.filter(r=>r.incluir); if(!sel.length||!col) return;
+    const sel=impRows.filter(r=>r.accion!=="omitir"); if(!sel.length||!col) return;
     const btn=$("#imp-go"); btn.disabled=true; btn.textContent="Importando…";
     const sistema=$("#imp-sis").value.trim()||"ERP Migración", modo=$("#imp-fecha").value, now=new Date();
-    let nuevas=0, act=0, fallas=0;
+    let nuevas=0, act=0, fallas=0, iguales=0; const omitidas=impRows.length-sel.length;
+    const usados=new Set(all.map(e=>e.id));
     for(const r of sel){
       try{
-        if(r.existe){ await col.doc(r.id).update({estadoSpd:r.estadoSpd, pr:r.pr, actualizadoSpd:now.toISOString()}); act++; }
-        else{
+        if(r.dup && (r.accion==="actualizar"||r.accion==="reemplazar")){
+          const prevE=r.dup.e, body={...prevE}; delete body.id;
+          Object.assign(body,{estadoSpd:r.estadoSpd, pr:r.pr||prevE.pr||"", actualizadoSpd:now.toISOString()});
+          if(r.accion==="reemplazar") Object.assign(body,{titulo:r.titulo, modulo:r.modulo, flujo:r.proceso.length?r.proceso:(prevE.flujo||[]), resultado:r.resultado, folio:r.folio, revisionSpd:r.revision, creoSpd:r.creo});
+          const c=conHist(prevE, body, "spd", r.accion==="reemplazar"?"Reemplazada con datos del SPD":"Estado actualizado desde el SPD");
+          if(!c.length){ iguales++; continue; }
+          await col.doc(prevE.id).set(body); act++;
+        } else {
+          let id=r.id; if(usados.has(id)){ let n=2; while(usados.has(id+"-"+n)) n++; id=id+"-"+n; }
+          usados.add(id);
           const f = modo==="creada"&&r.creada ? r.creada : {fecha: modo==="dia"?day:localDate(now), hora: localTime(now)};
-          await col.doc(r.id).set({fecha:f.fecha, hora:f.hora, sistema, modulo:r.modulo, titulo:r.titulo, flujo:r.proceso, resultado:r.resultado,
+          await col.doc(id).set({fecha:f.fecha, hora:f.hora, sistema, modulo:r.modulo, titulo:r.titulo, flujo:r.proceso, resultado:r.resultado,
             hallazgos:"", folio:r.folio, estadoSpd:r.estadoSpd, revisionSpd:r.revision, creoSpd:r.creo, pr:r.pr, imagenes:[], stickers:[],
-            origen:"spd", creado:now.toISOString()});
+            origen:"spd", creado:now.toISOString(), historial:[{t:now.toISOString(), origen:"spd", accion:r.accion==="copia"?"Copia importada del SPD":"Importada del SPD", cambios:[]}]});
           nuevas++;
         }
       }catch(_){ fallas++; }
     }
-    toast(`${nuevas} nuevas · ${act} actualizadas${fallas?` · ${fallas} con error`:""}`);
+    if(iguales) act+=0;
+    toast(`${nuevas} nuevas · ${act} actualizadas · ${omitidas} omitidas${iguales?` · ${iguales} sin cambios`:""}${fallas?` · ${fallas} con error`:""}`);
     if(fallas) notice(`${fallas} incidencias no se pudieron importar. Intenta de nuevo con esas.`);
     $("#imp-text").value=""; $("#imp-fname").textContent="o pega el contenido del CSV abajo"; impRows=[]; $("#imp-prev").innerHTML=""; updImpBtn();
     if(modo!=="creada"){ go(modo==="dia"?day:localDate(now)); }
@@ -887,10 +997,12 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
       if(editingId){
         const prev=all.find(e=>e.id===editingId)||{};
         const body={...prev, ...data, actualizado:new Date().toISOString()}; delete body.id;
+        const cambios=conHist(prev, body, "edicion");
+        if(!cambios.length){ toast("No hubo cambios"); resetForm(true); return; }
         await col.doc(editingId).set(body);
         toast("Revisión actualizada");
       } else {
-        await col.add({...data, origen:"pagina", creado:new Date().toISOString()});
+        await col.add({...data, origen:"pagina", creado:new Date().toISOString(), historial:[{t:new Date().toISOString(), origen:"pagina", accion:"Creada", cambios:[]}]});
         toast("Revisión agregada");
       }
       if(data.fecha!==day) day=data.fecha;
@@ -905,6 +1017,32 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
   });
   $("#btn-cancel").addEventListener("click",()=>resetForm());
 
+  document.querySelectorAll("#vtabs button").forEach(b=>b.addEventListener("click",()=>{ if(b.dataset.vista==="seg") segId=""; setVista(b.dataset.vista); }));
+  $("#entries").addEventListener("click",ev=>{ const b=ev.target.closest("[data-seg]"); if(!b) return; segId=b.dataset.seg; setVista("seg"); window.scrollTo({top:0,behavior:"smooth"}); });
+  $("#sq").addEventListener("input",renderSeg); $("#so").addEventListener("change",renderSeg);
+  $("#segchip").addEventListener("click",ev=>{ if(ev.target.closest("#segclear")){ segId=""; renderSeg(); } });
+  $("#seglist").addEventListener("click",ev=>{ const g=ev.target.closest("[data-go]"); if(!g) return; day=g.dataset.go; setVista("bit"); render(); window.scrollTo({top:0,behavior:"smooth"}); });
+  $("#btn-pdf-seg").addEventListener("click", async e=>{
+    const rows=segRows(); if(!rows.length){ toast("No hay cambios para descargar"); return; }
+    const btn=e.currentTarget; btn.disabled=true;
+    try{
+      const dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null; if(!dl){ notice("La descarga no está disponible."); return; }
+      const J=window.jspdf&&window.jspdf.jsPDF; if(!J) throw new Error("nolib");
+      const doc=new J({orientation:"landscape",unit:"pt",format:"letter"}); const W=doc.internal.pageSize.getWidth();
+      doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(22,10,36); doc.text("Bitácora QA · Seguimiento de cambios",40,48);
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(94,74,107);
+      const cur=segId?all.find(x=>x.id===segId):null;
+      doc.text(pdfSafe((cur?(cur.folio?cur.folio+" · ":"")+cur.titulo+" · ":"")+rows.length+" cambios · generado "+localDate(new Date())),40,66);
+      const body=rows.map(({e,h})=>[fmtFH(h.t),(e.folio?e.folio+" · ":"")+e.titulo+"\n"+(e.sistema||"")+(e.modulo?" › "+e.modulo:""),(ORIGEN[h.origen]||h.origen)+(h.accion?"\n"+h.accion:""),(h.cambios||[]).map(c=>(CAMPOS[c.campo]||c.campo)+": "+c.antes+" > "+c.despues).join("\n")||"—"].map(pdfSafe));
+      doc.autoTable({head:[["Fecha y hora","Revisión","Origen","Qué cambió (antes > después)"]],body,startY:80,margin:{left:40,right:40,bottom:40},
+        styles:{font:"helvetica",fontSize:8.5,cellPadding:4,valign:"top",textColor:[22,10,36],lineColor:[240,208,217],lineWidth:0.5},
+        headStyles:{fillColor:[99,34,187],textColor:[255,255,255],fontStyle:"bold"},alternateRowStyles:{fillColor:[253,238,242]},
+        columnStyles:{0:{cellWidth:90},1:{cellWidth:170},2:{cellWidth:90}},
+        didDrawPage:()=>{ const H=doc.internal.pageSize.getHeight(); doc.setFontSize(8); doc.setTextColor(94,74,107); doc.text("Bitácora QA · página "+doc.internal.getNumberOfPages(),W-40,H-20,{align:"right"}); }});
+      await dl.save({filename:`bitacora-qa-seguimiento-${localDate(new Date())}.pdf`,data:doc.output("blob")}); toast("PDF listo");
+    }catch(er){ if(er&&er.code==="declined"){} else notice("No se pudo generar el PDF. Intenta de nuevo."); }
+    finally{ btn.disabled=false; }
+  });
   $("#entries").addEventListener("click", async ev=>{
     const b=ev.target.closest("button"); if(!b) return;
     if(b.dataset.lb){ openLb(b.dataset.lb, +b.dataset.k); return; }
@@ -921,7 +1059,7 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     }
   });
 
-  function go(iso){ day=iso; confirmId=null; if(!editingId) $("#f-fecha").value=day; render(); window.scrollTo({top:0,behavior:"smooth"}); }
+  function go(iso){ setVista("bit"); day=iso; confirmId=null; if(!editingId) $("#f-fecha").value=day; render(); window.scrollTo({top:0,behavior:"smooth"}); }
   $("#hist").addEventListener("click",ev=>{ const tr=ev.target.closest("tr[data-go]"); if(tr) go(tr.dataset.go); });
   $("#hist").addEventListener("keydown",ev=>{ if(ev.key==="Enter"){ const tr=ev.target.closest("tr[data-go]"); if(tr) go(tr.dataset.go); }});
   const shift=n=>{ const [y,m,d]=day.split("-").map(Number); go(localDate(new Date(y,m-1,d+n))); };
