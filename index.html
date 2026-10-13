@@ -107,7 +107,25 @@ header.top button:not(.primary){background:var(--surface)}
 :root[data-tema="medusas"]{--bg:#05012d;--surface:#100842;--sunken:#1b0f58;--field:#07022f;--line:#2e1e70;--fg:#f7e9f7;--muted:#c6b3e2;--moss:#e080e2;--accent:#e980eb;--accent-fill:#e62662;--accent-ink:#ffffff;--accent-soft:#2a0d40;--ok:#e080e2;--ok-soft:#33114f;--warn:#ff7092;--warn-soft:#3d0a26;--bad:#b9a4ff;--bad-soft:#1e1466;--bg-img:radial-gradient(circle at 12% 18%, rgba(230,38,98,.22), transparent 28%), radial-gradient(circle at 90% 30%, rgba(217,77,219,.2), transparent 30%), radial-gradient(circle at 70% 95%, rgba(141,19,179,.25), transparent 35%);color-scheme:dark}
 :root[data-tema="neon"]{--bg:#17165a;--surface:#222174;--sunken:#2c2b8c;--field:#1a1965;--line:#3d3cb0;--fg:#f2f4ff;--muted:#bcc0f2;--moss:#5dea90;--accent:#5dea90;--accent-fill:#e23d8b;--accent-ink:#ffffff;--accent-soft:#3a1f5e;--ok:#5dea90;--ok-soft:#1d4a4f;--warn:#ff76b4;--warn-soft:#4a1f5a;--bad:#d0ccff;--bad-soft:#33329a;--bg-img:radial-gradient(circle at 85% 10%, rgba(226,61,139,.22), transparent 30%), radial-gradient(circle at 5% 90%, rgba(93,234,144,.16), transparent 30%);color-scheme:dark}
 .tema{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg)}
-.tema select{width:auto;padding:7px 8px;background:var(--surface);border-color:var(--accent);color:var(--accent);font-weight:500}
+
+.perfil{position:relative}
+header.top button.avatar,.avatar{width:40px;height:40px;border-radius:50%;padding:0;background:var(--accent-fill);color:var(--accent-ink);border:2px solid var(--surface);font-weight:700;font-size:16px;display:grid;place-items:center;box-shadow:0 0 0 1px var(--line)}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+header.top button.avatar{overflow:hidden}
+.avatar.big{overflow:hidden;width:44px;height:44px;flex:none;font-size:18px}
+.perfil-menu{position:absolute;right:0;top:calc(100% + 8px);width:min(300px,calc(100vw - 32px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,.28);z-index:40;display:flex;flex-direction:column;gap:12px}
+.pm-head{display:flex;gap:10px;align-items:center}
+.pm-head b{display:block;color:var(--accent)} .pm-head span:not(.avatar){display:block;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pm-foto{display:flex;gap:10px;margin-top:2px}
+header.top .pm-link,.pm-link{background:none;border:0;padding:0;color:var(--accent);font-size:12.5px;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.temas{display:flex;flex-direction:column;gap:4px}
+header.top .tema-op,.tema-op{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1.5px solid transparent;color:var(--fg);padding:6px 8px;border-radius:8px;font-weight:500}
+header.top .tema-op:hover{background:var(--sunken)}
+header.top .tema-op[aria-checked="true"]{border-color:var(--accent-fill);background:var(--accent-soft)}
+.sw{width:34px;height:22px;border-radius:6px;display:flex;align-items:flex-end;justify-content:flex-end;gap:2px;padding:3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.sw i{width:8px;height:8px;border-radius:50%;display:block}
+header.top .pm-salir,.pm-salir{width:100%;background:transparent;border:1px solid var(--line);color:var(--fg)}
+
 /* Decoración por tema */
 #deco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
 .wrap{position:relative;z-index:1}
@@ -115,7 +133,7 @@ header.top button:not(.primary){background:var(--surface)}
 .deco svg{width:100%;height:auto;display:block}
 #deco .side{max-width:calc((100vw - 1180px) / 2 - 8px)}
 #deco-top{position:absolute;left:0;right:0;top:0;height:120px;pointer-events:none;z-index:0;overflow:hidden}
-.panel{position:relative}
+.panel:not(.form-panel){position:relative}
 .perch{position:absolute;pointer-events:none;z-index:2;filter:drop-shadow(0 0 5px var(--deco-glow,transparent))}
 .perch svg{width:100%;height:100%;display:block}
 .deco.float{animation:flota 6s ease-in-out infinite}
@@ -192,13 +210,18 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
       <p class="sub">Qué revisaste, en qué sistema, qué flujo seguiste y qué encontraste.</p>
     </div>
     <div class="actions">
-      <label class="tema" for="tema">Tema
-        <select id="tema"><option value="aurora">Aurora</option><option value="halloween">Halloween</option><option value="medusas">Medusas</option><option value="neon">Neón</option><option value="lotos">Lotos</option></select>
-      </label>
       <button type="button" id="btn-copy">Copiar resumen del día</button>
       <button type="button" id="btn-imp-open">Importar del SPD</button>
-      <button type="button" id="btn-logout" hidden>Salir</button>
       <button type="button" id="btn-pdf-day" class="primary">Descargar PDF del día</button>
+      <div class="perfil">
+        <button type="button" class="avatar" id="perfil-btn" aria-haspopup="true" aria-expanded="false" aria-label="Mi perfil">S</button>
+        <div class="perfil-menu" id="perfil-menu" hidden>
+          <div class="pm-head"><span class="avatar big" id="pm-av" aria-hidden="true">S</span><div style="min-width:0"><b>Mi perfil</b><span id="pm-mail"></span><div class="pm-foto" id="pm-foto-acc"><button type="button" class="pm-link" id="pm-foto-btn">Cambiar foto</button><button type="button" class="pm-link" id="pm-foto-del" hidden>Quitar</button></div></div></div><input type="file" id="pm-foto-in" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <div><span class="label">Tema</span><div class="temas" role="radiogroup" aria-label="Tema"><button type="button" class="tema-op" data-tema-op="aurora" role="radio" aria-checked="false"><span class="sw" style="background:#fcbcc7"><i style="background:#6322bb"></i><i style="background:#a4248e"></i></span>Aurora</button><button type="button" class="tema-op" data-tema-op="halloween" role="radio" aria-checked="false"><span class="sw" style="background:#1b1026"><i style="background:#ff5404"></i><i style="background:#8267d0"></i></span>Halloween</button><button type="button" class="tema-op" data-tema-op="medusas" role="radio" aria-checked="false"><span class="sw" style="background:#05012d"><i style="background:#e62662"></i><i style="background:#d94ddb"></i></span>Medusas</button><button type="button" class="tema-op" data-tema-op="neon" role="radio" aria-checked="false"><span class="sw" style="background:#222174"><i style="background:#5dea90"></i><i style="background:#e23d8b"></i></span>Neón</button><button type="button" class="tema-op" data-tema-op="lotos" role="radio" aria-checked="false"><span class="sw" style="background:#eabdbb"><i style="background:#75a354"></i><i style="background:#7c79df"></i></span>Lotos</button></div></div>
+          <select id="tema" hidden><option value="aurora">Aurora</option><option value="halloween">Halloween</option><option value="medusas">Medusas</option><option value="neon">Neón</option><option value="lotos">Lotos</option></select>
+          <button type="button" id="btn-logout" class="pm-salir">Cerrar sesión</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -939,22 +962,13 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
         {k:"calabaza",x:"1.5%",y:"40%",w:74},
         {k:"dulce",x:"3%",y:"62%",w:40,r:"-14deg"},
         {k:"gatoSentado",x:"1%",y:"76%",w:64},
-        {k:"calabaza",x:"3%",y:"30%",w:40},
         {k:"dulce",x:"4%",y:"22%",w:30,r:"18deg"},
-        {k:"dulce",x:"1.5%",y:"48%",w:34,r:"-26deg"},
         {k:"dulce",x:"4%",y:"70%",w:28,r:"30deg"},
-        {k:"dulce",x:"2.5%",y:"96%",w:32,r:"-8deg"},
-        {k:"calabaza",x:"1%",y:"90%",w:80},
-        {k:"calabaza",x:"4%",y:"52%",w:34,r:"-10deg"},
         {k:"murcielago",x:"R2%",y:"22%",w:56,f:"float d2",r:"10deg"},
-        {k:"dulce",x:"R3%",y:"44%",w:38,r:"12deg"},
         {k:"gatoEchado",x:"R0.5%",y:"64%",w:96},
         {k:"calabaza",x:"R1.5%",y:"84%",w:66},
-        {k:"calabaza",x:"R1%",y:"6%",w:76},
         {k:"calabaza",x:"R3%",y:"34%",w:38,r:"8deg"},
-        {k:"dulce",x:"R2%",y:"14%",w:30,r:"-20deg"},
         {k:"dulce",x:"R4%",y:"56%",w:32,r:"22deg"},
-        {k:"dulce",x:"R1.5%",y:"92%",w:34,r:"-14deg"},
         {k:"calabaza",x:"R2%",y:"74%",w:32}
       ],
       top:[
@@ -996,6 +1010,51 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     apply(t); $("#tema").value=t;
     $("#tema").addEventListener("change",e=>{ apply(e.target.value); try{ localStorage.setItem("bitacora-tema",e.target.value); }catch(_){} });
   })();
+
+  // ---- Perfil ----
+  (function(){
+    const btn=$("#perfil-btn"), menu=$("#perfil-menu");
+    const sync=()=>{ const v=$("#tema").value; document.querySelectorAll("[data-tema-op]").forEach(b=>b.setAttribute("aria-checked", b.dataset.temaOp===v?"true":"false")); };
+    const open=o=>{ menu.hidden=!o; btn.setAttribute("aria-expanded", o?"true":"false"); if(o) sync(); };
+    btn.addEventListener("click",e=>{ e.stopPropagation(); open(menu.hidden); });
+    document.addEventListener("click",e=>{ if(!menu.hidden && !e.target.closest(".perfil")) open(false); });
+    document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !menu.hidden){ open(false); btn.focus(); } });
+    menu.addEventListener("click",e=>{ const b=e.target.closest("[data-tema-op]"); if(!b) return; const sel=$("#tema"); sel.value=b.dataset.temaOp; sel.dispatchEvent(new Event("change")); sync(); });
+
+    // Foto de perfil
+    let foto=null, ini="S";
+    const paint=async()=>{
+      const set=html=>{ btn.innerHTML=html; $("#pm-av").innerHTML=html; };
+      if(foto){ let url=blobUrl(foto); if(window.__resolveAsset){ try{ url=await window.__resolveAsset(foto); }catch(_){} } set(`<img src="${esc(url)}" alt="">`); }
+      else set(esc(ini));
+      $("#pm-foto-del").hidden=!foto;
+    };
+    window.__perfilLoad=async()=>{
+      try{ const d=await db.doc("config/perfil").get(); foto=(d.exists&&d.data().foto)||null; }catch(_){}
+      if(!assets) $("#pm-foto-acc").hidden=true;
+      paint();
+    };
+    $("#pm-foto-btn").addEventListener("click",()=>$("#pm-foto-in").click());
+    $("#pm-foto-in").addEventListener("change",async e=>{
+      const f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f||!assets||!db) return;
+      if(f.size>5*1024*1024){ toast("La foto debe pesar menos de 5 MB"); return; }
+      try{ toast("Subiendo foto…"); const r=await assets.upload(f,{type:f.type}); const prev=foto; foto=r.id;
+        await db.doc("config/perfil").set({foto}); if(prev) assets.delete(prev).catch(()=>{}); paint(); toast("Foto actualizada"); }
+      catch(_){ toast("No se pudo subir la foto"); }
+    });
+    $("#pm-foto-del").addEventListener("click",async()=>{
+      if(!foto||!db) return; const prev=foto; foto=null;
+      try{ await db.doc("config/perfil").set({foto:null}); if(assets) assets.delete(prev).catch(()=>{}); }catch(_){}
+      paint(); toast("Foto quitada");
+    });
+    const setUser=mail=>{ ini=(mail||"S").trim().charAt(0).toUpperCase()||"S"; $("#pm-mail").textContent=mail||""; paint(); };
+    const out=$("#btn-logout");
+    if(window.BITACORA_CONFIG && !window.__sb){ out.textContent="Recargar"; out.onclick=()=>location.reload(); setTimeout(()=>notice("No se pudo conectar con la base de datos. Recarga con Ctrl + F5; si sigue igual, revisa tu conexión o el archivo config.js."),0); }
+    if(window.__sb) window.__sb.auth.getSession().then(r=>{ const u=r.data.session&&r.data.session.user; setUser(u&&u.email);
+      if(!u){ out.textContent="Iniciar sesión"; out.onclick=()=>{ const l=document.getElementById("login"); if(l) l.hidden=false; open(false); }; }
+      else { out.textContent="Cerrar sesión"; out.onclick=async()=>{ await window.__sb.auth.signOut(); location.reload(); }; }
+    }).catch(()=>{});
+  })();
   resetForm(); render();
 
   (async()=>{
@@ -1011,6 +1070,7 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
     if(!assets || !canWrite) $("#evid-wrap").hidden=true;
     db.doc("config/stickers").onSnapshot(snap=>{ customStk=(snap.exists&&snap.data().items)||[]; renderPicker(); render(); }, ()=>{});
     renderPicker();
+    if(window.__perfilLoad) window.__perfilLoad();
     col = db.collection("revisiones");
     col.orderBy("fecha","desc").limit(1000).onSnapshot(snap=>{
       all = snap.docs.map(d=>({...d.data(), id:d.id}));
