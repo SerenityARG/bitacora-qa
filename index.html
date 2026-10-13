@@ -1039,6 +1039,29 @@ button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button
         headStyles:{fillColor:[99,34,187],textColor:[255,255,255],fontStyle:"bold"},alternateRowStyles:{fillColor:[253,238,242]},
         columnStyles:{0:{cellWidth:90},1:{cellWidth:170},2:{cellWidth:90}},
         didDrawPage:()=>{ const H=doc.internal.pageSize.getHeight(); doc.setFontSize(8); doc.setTextColor(94,74,107); doc.text("Bitácora QA · página "+doc.internal.getNumberOfPages(),W-40,H-20,{align:"right"}); }});
+      const vistos=new Set(), conImg=[]; rows.forEach(({e})=>{ if(!vistos.has(e.id)){ vistos.add(e.id); if(e.imagenes&&e.imagenes.length) conImg.push(e); } });
+      if(conImg.length){
+        const H=doc.internal.pageSize.getHeight(), M=40, gap=14, colW=(W-2*M-gap)/2, maxH=230;
+        doc.addPage(); let y=50;
+        doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(22,10,36); doc.text("Evidencias de las revisiones",M,y); y+=20;
+        for(const e of conImg){
+          if(y>H-80){ doc.addPage(); y=50; }
+          doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(22,10,36);
+          doc.text(pdfSafe(`${e.folio?e.folio+" · ":""}${e.titulo||""} · ${e.sistema||""}${e.modulo?" › "+e.modulo:""}`).slice(0,150),M,y); y+=10;
+          let x=M, rowH=0;
+          for(const im of e.imagenes){
+            let j; try{ j=await loadJpeg(window.__resolveAsset?await window.__resolveAsset(im.id):blobUrl(im.id)); }catch(_){ continue; }
+            const sc=Math.min(colW/j.w,maxH/j.h), w=j.w*sc, h=j.h*sc;
+            if(x>M && x+w>W-M){ x=M; y+=rowH+gap; rowH=0; }
+            if(y+h>H-40){ doc.addPage(); y=50; x=M; rowH=0; }
+            doc.addImage(j.data,"JPEG",x,y,w,h); doc.setDrawColor(240,208,217); doc.rect(x,y,w,h);
+            x+=colW+gap; rowH=Math.max(rowH,h);
+          }
+          y+=rowH+28;
+        }
+        const n=doc.internal.getNumberOfPages();
+        for(let q=1;q<=n;q++){ doc.setPage(q); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(94,74,107); doc.setFillColor(255,255,255); doc.rect(W-200,H-30,160,14,"F"); doc.text("Bitácora QA · página "+q+" de "+n,W-40,H-20,{align:"right"}); }
+      }
       await dl.save({filename:`bitacora-qa-seguimiento-${localDate(new Date())}.pdf`,data:doc.output("blob")}); toast("PDF listo");
     }catch(er){ if(er&&er.code==="declined"){} else notice("No se pudo generar el PDF. Intenta de nuevo."); }
     finally{ btn.disabled=false; }
