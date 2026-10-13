@@ -142,6 +142,13 @@ header.top button:not(.primary){background:rgba(255,250,251,.6)}
 .folio{font-family:var(--mono);font-size:11.5px;padding:1px 6px;border-radius:4px;background:var(--accent-soft);color:var(--accent);font-weight:500}
 .spdest{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 .tag-new{font-size:11px;color:var(--ok);font-weight:600} .tag-upd{font-size:11px;color:var(--muted)}
+button.stat{font:inherit;cursor:pointer;border:1.5px solid transparent;color:var(--muted);padding:6px 10px;font-weight:400}
+button.stat:hover{border-color:var(--line)}
+button.stat.on{border-color:currentColor;background:var(--surface);box-shadow:0 1px 0 var(--line)}
+button.stat.ok.on{color:var(--ok)} button.stat.warn.on{color:var(--warn)} button.stat.bad.on{color:var(--bad)} button.stat.all.on,button.stat.sis.on{color:var(--accent)}
+.sisrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 4px}
+.sisrow button.stat{font-size:12.5px;padding:4px 9px}
+.filtnote{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 0}
 </style>
 
 <div class="wrap">
@@ -297,6 +304,7 @@ header.top button:not(.primary){background:rgba(255,250,251,.6)}
   let formImgs = [], newUploads = new Set(), removedImgs = new Set();
   const blobUrl = id => (window.__assetUrl ? window.__assetUrl(id) : "/_blob/" + id);
   let day = localDate(new Date());
+  let dayRes=null, daySis=null, showSis=false;
 
   function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2200); }
   function notice(msg){ const n=$("#notice"); n.textContent=msg||""; n.hidden=!msg; }
@@ -345,18 +353,27 @@ header.top button:not(.primary){background:rgba(255,250,251,.6)}
     $("#day").value=day;
     const isToday = day===localDate(new Date());
     const ld=longDay(day); $("#dayname").textContent = (isToday?"Hoy · ":"")+ld.charAt(0).toUpperCase()+ld.slice(1);
-    const items = all.filter(e=>e.fecha===day).sort((a,b)=>sortKey(a)<sortKey(b)?-1:1);
-    const c = {ok:0,incidencias:0,pausa:0}; items.forEach(e=>c[e.resultado]=(c[e.resultado]||0)+1);
-    const systems = new Set(items.map(e=>e.sistema)).size;
-    $("#stats").innerHTML = items.length ? `
-      <span class="stat"><b>${items.length}</b> revisiones</span>
-      <span class="stat"><b>${systems}</b> ${systems===1?"sistema":"sistemas"}</span>
-      <span class="stat ok"><b>${c.ok}</b> OK</span>
-      <span class="stat warn"><b>${c.incidencias}</b> con incidencias</span>
-      <span class="stat bad"><b>${c.pausa}</b> en pausa</span>` : "";
+    const dayItems = all.filter(e=>e.fecha===day).sort((a,b)=>sortKey(a)<sortKey(b)?-1:1);
+    const c = {ok:0,incidencias:0,pausa:0}; dayItems.forEach(e=>c[e.resultado]=(c[e.resultado]||0)+1);
+    const sysCount={}; dayItems.forEach(e=>sysCount[e.sistema]=(sysCount[e.sistema]||0)+1);
+    const sysList=Object.keys(sysCount).sort();
+    if(daySis && !sysCount[daySis]) daySis=null;
+    const items = dayItems.filter(e=>(!dayRes||e.resultado===dayRes)&&(!daySis||e.sistema===daySis));
+    const on=(v)=>v?" on":"";
+    $("#stats").innerHTML = dayItems.length ? `
+      <button type="button" class="stat all${on(!dayRes&&!daySis)}" data-f="all" title="Ver todas"><b>${dayItems.length}</b> revisiones</button>
+      <button type="button" class="stat sis${on(showSis||daySis)}" data-f="sis" title="Filtrar por sistema" aria-expanded="${showSis}"><b>${sysList.length}</b> ${sysList.length===1?"sistema":"sistemas"}${daySis?" · "+esc(daySis):""}</button>
+      <button type="button" class="stat ok${on(dayRes==="ok")}" data-f="ok"><b>${c.ok}</b> OK</button>
+      <button type="button" class="stat warn${on(dayRes==="incidencias")}" data-f="incidencias"><b>${c.incidencias}</b> con incidencias</button>
+      <button type="button" class="stat bad${on(dayRes==="pausa")}" data-f="pausa"><b>${c.pausa}</b> en pausa</button>
+      ${showSis?`<div class="sisrow" style="flex-basis:100%">${sysList.map(sn=>`<button type="button" class="stat sis${on(daySis===sn)}" data-fs="${esc(sn)}"><b>${sysCount[sn]}</b> ${esc(sn)}</button>`).join("")}</div>`:""}
+      ${(dayRes||daySis)?`<p class="filtnote" style="flex-basis:100%">Mostrando ${items.length} de ${dayItems.length}${dayRes?" · "+RES[dayRes]:""}${daySis?" · "+esc(daySis):""} <button type="button" class="ghost" data-f="all">Quitar filtro</button></p>`:""}` : "";
 
     const ul=$("#entries");
     if(!loaded){ ul.innerHTML=`<li class="empty"><strong>Cargando la bitácora…</strong></li>`; }
+    else if(dayItems.length && !items.length){
+      ul.innerHTML=`<li class="empty"><strong>Nada con ese filtro</strong>No hay revisiones de este día que coincidan.</li>`;
+    }
     else if(!items.length){
       ul.innerHTML=`<li class="empty"><strong>Sin revisiones registradas este día</strong>Agrega la primera con el formulario o importa tus incidencias del SPD.</li>`;
     } else {
@@ -855,6 +872,15 @@ header.top button:not(.primary){background:rgba(255,250,251,.6)}
   ["#q","#fs","#fr"].forEach(s=>$(s).addEventListener("input",renderHistory));
 
   window.__rerender=()=>{ render(); renderPicker(); };
+  $("#stats").addEventListener("click",e=>{
+    const b=e.target.closest("[data-f],[data-fs]"); if(!b) return;
+    if(b.dataset.fs!==undefined){ daySis = daySis===b.dataset.fs ? null : b.dataset.fs; }
+    else { const f=b.dataset.f;
+      if(f==="all"){ dayRes=null; daySis=null; showSis=false; }
+      else if(f==="sis"){ showSis=!showSis; }
+      else dayRes = dayRes===f ? null : f; }
+    render();
+  });
   resetForm(); render();
 
   (async()=>{
